@@ -20,11 +20,13 @@ ChartJS.register(
   Legend
 );
 
+interface ChartItem {
+  _id: string;
+  visits: number;
+}
+
 interface ChartProps {
-  data: {
-    _id: string;
-    visits: number;
-  }[];
+  data: ChartItem[];
 }
 
 export default function VisitorsChart({ data }: ChartProps) {
@@ -32,26 +34,55 @@ export default function VisitorsChart({ data }: ChartProps) {
   const values = data.map(item => item.visits);
 
   return (
-    <div className="bg-gray-800 p-6 rounded-xl mt-8">
-      <h2 className="text-xl font-bold mb-4">Visitors Trend</h2>
+    <div className="mt-10 bg-gray-900/70 border border-gray-700 rounded-2xl p-6 shadow-[0_0_25px_rgba(0,255,255,.2)]">
+      <h2 className="text-2xl font-bold text-white mb-4">
+        Visitors Trend Analytics
+      </h2>
 
       <Line
         data={{
           labels,
           datasets: [
             {
-              label: "Visits",
+              label: "Website Visits",
               data: values,
-              borderColor: "#4ade80",
-              backgroundColor: "rgba(74, 222, 128, 0.2)"
-            }
-          ]
+              borderColor: "rgba(0,255,255,0.9)",
+              backgroundColor: "rgba(0,255,255,0.2)",
+              pointBackgroundColor: "#00ffff",
+              pointBorderColor: "#fff",
+              tension: 0.4,
+              borderWidth: 3,
+              pointRadius: 5,
+              fill: true
+            },
+          ],
         }}
         options={{
           responsive: true,
+          plugins: {
+            legend: {
+              labels: {
+                color: "white",
+              },
+            },
+            tooltip: {
+              backgroundColor: "#000",
+              titleColor: "#00ffff",
+              bodyColor: "white",
+              borderColor: "#00ffff",
+              borderWidth: 1,
+            },
+          },
           scales: {
-            y: { beginAtZero: true }
-          }
+            x: {
+              ticks: { color: "white" },
+              grid: { color: "rgba(255,255,255,0.1)" },
+            },
+            y: {
+              ticks: { color: "white" },
+              grid: { color: "rgba(255,255,255,0.1)" },
+            },
+          },
         }}
       />
     </div>
