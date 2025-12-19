@@ -1,26 +1,25 @@
 const mongoose = require("mongoose");
 
 const visitorSchema = new mongoose.Schema({
-  ip: String,
-  country: String,
-  city: String,
-  device: String,
-  browser: String,
+  ip: { type: String, required: true },
 
-  firstVisit: {
-    type: Date,
-    default: Date.now
-  },
+  // GEO
+  country: { type: String, default: "Unknown" },
+  state: { type: String, default: "Unknown" },
+  city: { type: String, default: "Unknown" },
+  region: { type: String, default: "Unknown" },
+  isp: { type: String, default: "Unknown" },
+  timezone: { type: String, default: "Unknown" },
 
-  lastVisit: {
-    type: Date,
-    default: Date.now
-  },
+  // DEVICE
+  device: { type: String, default: "Unknown" },
+  browser: { type: String, default: "Unknown" },
+  os: { type: String, default: "Unknown" },
 
-  totalVisits: {
-    type: Number,
-    default: 1
-  }
+  // VISITS
+  totalVisits: { type: Number, default: 1 },
+  firstVisit: { type: Date, default: Date.now },
+  lastVisit: { type: Date, default: Date.now }
 });
 
 module.exports = mongoose.model("Visitor", visitorSchema);

@@ -1,93 +1,85 @@
 const express = require("express");
-const axios = require("axios");
-const Visitor = require("../models/visitor");
-const Analytics = require("../models/analytics");
-
 const router = express.Router();
-
-// Get Real Client IP
-function getClientIp(req) {
-  return (
-    req.headers["x-forwarded-for"]?.split(",")[0] ||
-    req.socket.remoteAddress ||
-    "unknown"
-  );
-}
+const Visitor = require("../models/visitor");
+const axios = require("axios");
+const useragent = require("useragent");
 
 router.get("/visit", async (req, res) => {
   try {
-    const ip = getClientIp(req);
+    // Get Real IP
+    let ip =
+      req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
+      req.connection.remoteAddress ||
+      req.ip ||
+      "0.0.0.0";
 
-    // Fetch geo location
-    const geo = await axios.get(`https://ipapi.co/${ip}/json/`).catch(() => ({
-      data: {}
-    }));
+    // Localhost Fix
+    if (ip === "::1" || ip === "127.0.0.1") {
+      ip = "1.1.1.1"; // Fake testing IP
+    }
 
-    const country = geo.data.country_name || "Unknown";
-    const city = geo.data.city || "Unknown";
+    let location = {
+      country: "Unknown",
+      city: "Unknown",
+      region: "Unknown",
+      isp: "Unknown",
+      timezone: "Unknown"
+    };
 
-    const userAgent = req.headers["user-agent"] || "";
-    const device = userAgent.includes("Mobile") ? "Mobile" : "Desktop";
-    const browser =
-      userAgent.includes("Chrome") ? "Chrome" :
-      userAgent.includes("Firefox") ? "Firefox" :
-      userAgent.includes("Safari") ? "Safari" :
-      "Other";
+    let state = "Unknown";
 
-    // Check if unique visitor exists
+    try {
+      const geo = await axios.get(`https://ipapi.co/${ip}/json/`);
+      location.country = geo.data.country_name || "Unknown";
+      location.city = geo.data.city || "Unknown";
+      location.region = geo.data.region || "Unknown";
+      location.isp = geo.data.org || "Unknown";
+      location.timezone = geo.data.timezone || "Unknown";
+
+      state = geo.data.region || "Unknown";
+    } catch (err) {
+      console.log("Geo API failed");
+    }
+
+    // Device Details
+    const agent = useragent.parse(req.headers["user-agent"]);
+    const device = agent.device.family || "Unknown";
+    const browser = agent.family || "Unknown";
+    const os = agent.os.family || "Unknown";
+
+    // Check Visitor
     let visitor = await Visitor.findOne({ ip });
 
-    if (!visitor) {
-      visitor = new Visitor({
+    if (visitor) {
+      visitor.totalVisits += 1;
+      visitor.lastVisit = new Date();
+      visitor.country = location.country;
+      visitor.city = location.city;
+      visitor.region = location.region;
+      visitor.state = state;
+      await visitor.save();
+    } else {
+      visitor = await Visitor.create({
         ip,
-        country,
-        city,
+        country: location.country,
+        city: location.city,
+        region: location.region,
+        state,
+        isp: location.isp,
+        timezone: location.timezone,
         device,
-        browser
-      });
-      await visitor.save();
-    } else {
-      visitor.totalVisits++;
-      visitor.lastVisit = Date.now();
-      await visitor.save();
-    }
-
-    // Analytics Today
-    const today = new Date().toISOString().split("T")[0];
-
-    let analytics = await Analytics.findOne({ date: today });
-
-    if (!analytics) {
-      analytics = new Analytics({
-        date: today,
+        browser,
+        os,
         totalVisits: 1,
-        uniqueVisits: 1,
-        countries: { [country]: 1 }
+        firstVisit: new Date(),
+        lastVisit: new Date()
       });
-    } else {
-      analytics.totalVisits++;
-
-      if (!await Visitor.exists({ ip })) {
-        analytics.uniqueVisits++;
-      }
-
-      analytics.countries[country] =
-        (analytics.countries[country] || 0) + 1;
     }
 
-    await analytics.save();
-
-    const totalVisitors = await Visitor.countDocuments();
-    res.json({
-      success: true,
-      totalVisitors,
-      uniqueVisitors: totalVisitors,
-      todayStats: analytics
-    });
-
+    res.json({ success: true, visitor });
   } catch (error) {
     console.log(error);
-    res.json({ error: "Tracking failed" });
+    res.status(500).json({ error: "Tracking failed" });
   }
 });
 
