@@ -6,21 +6,26 @@ const useragent = require("useragent");
 
 router.get("/visit", async (req, res) => {
   try {
-    // ------- GET REAL IP -------
+    // GET REAL CLIENT IP
     let ip =
+      req.headers["x-client-ip"] ||
       req.headers["x-real-ip"] ||
       req.headers["x-forwarded-for"]?.split(",")[0] ||
+      req.ip ||
       req.socket.remoteAddress ||
       "0.0.0.0";
 
+    if (ip.startsWith("::ffff:")) ip = ip.replace("::ffff:", "");
+
+    // for localhost testing
     if (ip === "::1" || ip === "127.0.0.1") {
-      ip = "103.159.196.14"; // dummy India IP for local testing
+      ip = "103.159.196.14";  // Sample India IP (works for testing)
     }
 
-    console.log("User IP:", ip);
+    console.log("Final IP Used:", ip);
 
-    // ------- GEO DETAILS -------
-    let geo = {
+    // DEFAULT LOCATION
+    let location = {
       country: "Unknown",
       state: "Unknown",
       city: "Unknown",
@@ -29,26 +34,32 @@ router.get("/visit", async (req, res) => {
       timezone: "Unknown",
     };
 
+    // FETCH GEO DATA
     try {
-      const r = await axios.get(`http://ip-api.com/json/${ip}`);
-      if (r.data.status === "success") {
-        geo.country = r.data.country;
-        geo.state = r.data.regionName;
-        geo.city = r.data.city;
-        geo.region = r.data.regionName;
-        geo.isp = r.data.isp;
-        geo.timezone = r.data.timezone;
+      const response = await axios.get(`http://ip-api.com/json/${ip}`);
+      const geo = response.data;
+
+      console.log("Geo Response:", geo);
+
+      if (geo.status === "success") {
+        location.country = geo.country || "Unknown";
+        location.state = geo.regionName || "Unknown";
+        location.city = geo.city || "Unknown";
+        location.region = geo.region || "Unknown";
+        location.isp = geo.isp || "Unknown";
+        location.timezone = geo.timezone || "Unknown";
       }
-    } catch (err) {
-      console.log("Geo lookup failed");
+    } catch (e) {
+      console.log("Geo API Failed:", e.message);
     }
 
-    // ------- DEVICE INFO -------
+    // DEVICE DETAILS
     const agent = useragent.parse(req.headers["user-agent"]);
     const device = agent.device.family || "Unknown";
     const browser = agent.family || "Unknown";
     const os = agent.os.family || "Unknown";
 
+    // FIND VISITOR
     let visitor = await Visitor.findOne({ ip });
 
     if (visitor) {
@@ -58,19 +69,28 @@ router.get("/visit", async (req, res) => {
     } else {
       visitor = await Visitor.create({
         ip,
-        ...geo,
+
+        country: location.country,
+        state: location.state,
+        city: location.city,
+        region: location.region,
+        isp: location.isp,
+        timezone: location.timezone,
+
         device,
         browser,
         os,
-        totalVisits: 1,
+
         firstVisit: new Date(),
         lastVisit: new Date(),
+        totalVisits: 1,
       });
     }
 
-    res.json({ success: true, visitor });
-  } catch (err) {
-    console.log(err);
+    res.json({ message: "Tracked", visitor });
+
+  } catch (error) {
+    console.log(error);
     res.status(500).json({ error: "Tracking failed" });
   }
 });
