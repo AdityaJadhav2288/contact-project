@@ -17,6 +17,8 @@ mongoose
 // Visitor route
 app.use("/api", require("./routes/visitorRoutes"));
 app.use("/api/admin", require("./routes/adminRoutes"));
+app.use("/api/analytics", require("./routes/analyticsRoutes"));
+
 
 
 app.listen(5000, () =>
