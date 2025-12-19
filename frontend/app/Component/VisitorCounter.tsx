@@ -3,7 +3,8 @@ import { useEffect } from "react";
 
 export default function VisitorCounter() {
   useEffect(() => {
-    fetch("http://localhost:5000/api/visit").catch(() => {});
+    fetch("https://contact-project-h8qz.onrender.com/api/visit")
+
   }, []);
 
   return null; // 👈 nothing visible

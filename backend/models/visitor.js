@@ -1,13 +1,26 @@
 const mongoose = require("mongoose");
 
-const visitorSchema = new mongoose.Schema(
-  {
-    ip: String,
-    userAgent: String,
-    visits: { type: Number, default: 1 },
-    lastVisited: { type: Date, default: Date.now },
+const visitorSchema = new mongoose.Schema({
+  ip: String,
+  country: String,
+  city: String,
+  device: String,
+  browser: String,
+
+  firstVisit: {
+    type: Date,
+    default: Date.now
   },
-  { timestamps: true }
-);
+
+  lastVisit: {
+    type: Date,
+    default: Date.now
+  },
+
+  totalVisits: {
+    type: Number,
+    default: 1
+  }
+});
 
 module.exports = mongoose.model("Visitor", visitorSchema);
