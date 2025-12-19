@@ -16,6 +16,8 @@ mongoose
 
 // Visitor route
 app.use("/api", require("./routes/visitorRoutes"));
+app.use("/api/admin", require("./routes/adminRoutes"));
+
 
 app.listen(5000, () =>
   console.log("Server running on port 5000")
